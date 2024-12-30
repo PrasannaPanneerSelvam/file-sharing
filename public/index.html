@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Form</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        #container {
+            display: flex;
+            flex-direction: column;
+            padding: 10px 10px;
+            gap: 3px;
+        }
+
+        #uploadForm {
+            display: flex;
+            align-items: center;
+        }
+
+        #uploadForm>button {
+            align-self: flex-end;
+            margin-left: auto;
+            padding: 5px 7px;
+        }
+
+        .progressContainer {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .hide {
+            display: none;
+        }
+
+        .disabled {
+            opacity: 0.3;
+        }
+    </style>
+</head>
+
+<body>
+    <h3>Upload File Form</h3>
+
+    <div id="container">
+        <div id="uploadForm">
+            <input type="file" id="fileInput" name="files" multiple required>
+            <button type="submit" class="disabled" id="upload-button">Upload</button>
+        </div>
+        <span id="upload-counter" style="margin: 10px 0;"></span>
+        <div id="files-progress" class="hide"></div>
+    </div>
+
+    <script>
+        const localIP = '';
+        const serverPath = 'http://' + localIP + ':3000/upload';
+
+        const fileInput = document.getElementById('fileInput');
+        const button = document.getElementById('upload-button');
+        const progressContainer = document.getElementById('files-progress');
+
+
+        fileInput.addEventListener('change', () => {
+            button.classList.remove('disabled');
+        });
+
+        const createLoadingText = (fileName) => {
+            const div = document.createElement('div');
+            const fileNameSpan = document.createElement('span');
+            const progressBar = document.createElement('progress');
+            const progressText = document.createElement('span');
+
+            fileNameSpan.innerText = fileName;
+
+            div.classList.add('progressContainer');
+
+            progressBar.value = 0;
+            progressBar.max = 100;
+
+            div.appendChild(fileNameSpan);
+            div.appendChild(progressBar);
+            div.appendChild(progressText);
+
+            return {
+                element: div,
+                updateStatus: (value) => {
+                    progressBar.value = value;
+                    progressText.innerText = `${value}%`;
+                }
+            };
+        };
+
+        const sendFile = async function (fileBlob, updateStatusInDOM) {
+            const xhr = new XMLHttpRequest();
+
+            const success = await new Promise((resolve) => {
+                xhr.upload.addEventListener("progress", (event) => {
+                    if (event.lengthComputable) {
+                        const percent = Math.round((event.loaded / event.total) * 100);
+                        updateStatusInDOM(percent);
+                    }
+                });
+                xhr.addEventListener("loadend", () => {
+                    resolve(xhr.readyState === 4 && xhr.status === 200);
+                });
+                xhr.open("POST", serverPath, true);
+                xhr.send(fileBlob);
+            });
+
+            return success;
+        };
+
+        const uploadFiles = async function () {
+
+            button.innerText = 'Uploading...';
+            progressContainer.classList.remove('hide');
+
+            const counter = document.getElementById('upload-counter');
+            const files = fileInput.files;
+
+            for (let index = 0; index < files.length; index++) {
+                const currentFile = files[index];
+                const fileName = currentFile.name;
+                try {
+                    // Creating form data
+                    const formData = new FormData();
+                    formData.append('file', currentFile);
+                    formData.append('name', fileName);
+
+                    // DOM updates
+                    const { element: newFile, updateStatus } = createLoadingText(fileName);
+                    progressContainer.appendChild(newFile);
+                    counter.innerText = `Uploading ${index + 1} / ${files.length} files`;
+
+                    // Sending form data to server
+                    await sendFile(formData, updateStatus);
+
+                } catch (e) {
+                    console.log("Error", e);
+                }
+            }
+
+            button.innerText = 'Uploaded!';
+        };
+
+        button.addEventListener('click', uploadFiles);
+    </script>
+</body>
+
+</html>

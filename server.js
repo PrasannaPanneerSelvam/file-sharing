@@ -1,61 +1,65 @@
+const os = require("os");
 const express = require("express");
-const fs = require("fs");
+const fileUpload = require("express-fileupload");
 const path = require("path");
-const WebSocket = require("ws");
 
 const app = express();
+
 const port = 3000;
-const UPLOAD_DIR = "./uploads";
 
-// WebSocket server setup
-const wss = new WebSocket.Server({ noServer: true });
+const absoluteFilePath = path.join(__dirname, "../test");
 
-wss.on("connection", (ws) => {
-  console.log("New WebSocket connection established");
-  let fileName = "";
-  let fileStream = null;
+const getFilePath = (fileName) => path.join(absoluteFilePath, fileName);
 
-  // Receive incoming file data in chunks and save it
-  ws.on("message", (message) => {
-    const buffer = Buffer.from(message);
+const getLocalIP = () => {
+  const nets = os.networkInterfaces();
+  const results = {};
 
-    if (!fileStream) {
-      // First message, expected to be the file name
-      fileName = buffer.toString("utf-8");
-      console.log(`Receiving file: ${fileName}`);
-
-      fileStream = fs.createWriteStream(path.join(UPLOAD_DIR, fileName));
-      return;
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name]) {
+      // Skip over non-IPv4 and internal (i.e. 127.0.0.1) addresses
+      // 'IPv4' is in Node <= 17, from 18 it's a number 4 or 6
+      const familyV4Value = typeof net.family === "string" ? "IPv4" : 4;
+      if (net.family === familyV4Value && !net.internal) {
+        if (!results[name]) {
+          results[name] = [];
+        }
+        results[name].push(net.address);
+      }
     }
+  }
 
-    // Write the incoming buffer data (file chunks)
-    fileStream.write(buffer);
-  });
+  console.log("Your local IP is", results);
+};
 
-  ws.on("close", () => {
-    console.log("File transfer complete.");
-    if (fileStream) {
-      fileStream.end(); // End the file stream
-      fileStream = null;
+getLocalIP();
+
+// Use express-fileupload middleware
+app.use(fileUpload());
+
+// Serve static files (like the HTML form)
+app.use(express.static("public"));
+
+// Handle file upload
+app.post("/upload", (req, res) => {
+  if (!req.files) {
+    return res.status(400).send("No file was uploaded.");
+  }
+
+  // Get the uploaded file
+  const uploadedFile = req.files.file;
+
+  // Define the upload path and move the file
+  const uploadPath = getFilePath(uploadedFile.name);
+  uploadedFile.mv(uploadPath, (err) => {
+    if (err) {
+      return res.status(500).send(err);
     }
-  });
-
-  ws.on("error", (err) => {
-    console.error("WebSocket error:", err);
-    if (fileStream) {
-      fileStream.end(); // End the file stream on error
-      fileStream = null;
-    }
+    res.status(200).send("File uploaded successfully: " + uploadPath);
   });
 });
 
-// Server and WebSocket handling
-app.server = app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
-});
-
-app.server.on("upgrade", (request, socket, head) => {
-  wss.handleUpgrade(request, socket, head, (ws) => {
-    wss.emit("connection", ws, request);
-  });
+// Start the server
+app.listen(port, () => {
+  console.log(`Server started on http://localhost:${port}`);
 });
