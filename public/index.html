@@ -13,19 +13,23 @@
             box-sizing: border-box;
         }
 
-        #container {
+        body {
+            padding: 5px 14px;
+        }
+
+        .container {
             display: flex;
             flex-direction: column;
             padding: 10px 10px;
             gap: 3px;
         }
 
-        #uploadForm {
+        .uploadForm {
             display: flex;
             align-items: center;
         }
 
-        #uploadForm>button {
+        .uploadForm>button {
             align-self: flex-end;
             margin-left: auto;
             padding: 5px 7px;
@@ -50,8 +54,8 @@
 <body>
     <h3>Upload File Form</h3>
 
-    <div id="container">
-        <div id="uploadForm">
+    <div id="container" class="container">
+        <div class="uploadForm">
             <input type="file" id="fileInput" name="files" multiple required>
             <button type="submit" class="disabled" id="upload-button">Upload</button>
         </div>
@@ -60,13 +64,9 @@
     </div>
 
     <script>
-        const localIP = '';
-        const serverPath = 'http://' + localIP + ':3000/upload';
-
         const fileInput = document.getElementById('fileInput');
         const button = document.getElementById('upload-button');
         const progressContainer = document.getElementById('files-progress');
-
 
         fileInput.addEventListener('change', () => {
             button.classList.remove('disabled');
@@ -111,7 +111,7 @@
                 xhr.addEventListener("loadend", () => {
                     resolve(xhr.readyState === 4 && xhr.status === 200);
                 });
-                xhr.open("POST", serverPath, true);
+                xhr.open("POST", '/upload', true);
                 xhr.send(fileBlob);
             });
 

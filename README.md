@@ -12,5 +12,4 @@ npm i
 npm start
 ```
 
-3. Copy the local IP address from the terminal and paste in the value of `localIP` in the [/public/index.html](/public/index.html) file
-4. Open `<localIP>:3000` in the source device's web browser and transfer your files.
+3. Copy your local IP address from the terminal and open `<localIP>:3000` in the source device's web browser and transfer your files.
